@@ -15,8 +15,8 @@ from threading import Thread
 loop = asyncio.get_event_loop()
 
 # Use environment variables for security
-TOKEN = os.getenv("7350883849:AAHcEqG1hpQuP-G5cXEOqQofinJnnUfnUUM")
-MONGO_URI = os.getenv("mongodb+srv://rishi:ipxkingyt@rishiv.ncljp.mongodb.net/?retryWrites=true&w=majority&appName=rishiv'")
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+MONGO_URI = os.getenv("MONGODB_URI")
 
 FORWARD_CHANNEL_ID = -1002156421934
 CHANNEL_ID = -1002156421934
